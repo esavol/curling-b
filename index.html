@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Curling B v4</title>
+<title>Curling B v5</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:#0a1520;font-family:sans-serif;color:#fff;user-select:none;-webkit-user-select:none}
@@ -42,7 +42,27 @@ color:#fff;font-family:inherit;gap:6px;
 .sc-throw{font-size:10px;font-weight:800;opacity:.9;}
 .sc-score{font-size:28px;font-weight:900;color:#fff;line-height:1;}
 
-/* Middle column: era info + new game stacked */
+/* PIN screen */
+#pin-screen{
+position:fixed;inset:0;z-index:999;
+background:#0a1520;
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+padding:30px;
+}
+#pin-screen h1{font-size:22px;font-weight:900;color:#f0a500;text-align:center;}
+#pin-screen p{font-size:13px;color:rgba(255,255,255,.5);text-align:center;}
+#pin-dots{display:flex;gap:12px;margin:8px 0;}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent;transition:.15s;}
+.pin-dot.filled{background:#f0a500;border-color:#f0a500;}
+#pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:260px;}
+.pin-key{
+padding:18px 0;font-size:22px;font-weight:700;
+border:1.5px solid rgba(255,255,255,.12);border-radius:12px;
+background:rgba(255,255,255,.06);color:#fff;cursor:pointer;
+transition:.1s;
+}
+.pin-key:active{background:rgba(255,255,255,.18);}
+#pin-error{font-size:12px;color:#e74c3c;min-height:16px;text-align:center;}
 #mid-col{display:flex;flex-direction:column;align-items:center;justify-content:space-between;flex-shrink:0;padding:2px 0;}
 .era-pill{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:3px 7px;text-align:center;}
 .era-pill span{font-size:7px;opacity:.4;display:block;line-height:1.2}
@@ -78,6 +98,32 @@ body{flex-direction:row}
 
 </head>
 <body>
+
+<div id="pin-screen">
+  <h1>🥌 Curling B</h1>
+  <p>Anna PIN-koodi pelataksesi</p>
+  <div id="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div id="pin-error"></div>
+  <div id="pin-pad">
+    <button class="pin-key" onclick="pinPress('1')">1</button>
+    <button class="pin-key" onclick="pinPress('2')">2</button>
+    <button class="pin-key" onclick="pinPress('3')">3</button>
+    <button class="pin-key" onclick="pinPress('4')">4</button>
+    <button class="pin-key" onclick="pinPress('5')">5</button>
+    <button class="pin-key" onclick="pinPress('6')">6</button>
+    <button class="pin-key" onclick="pinPress('7')">7</button>
+    <button class="pin-key" onclick="pinPress('8')">8</button>
+    <button class="pin-key" onclick="pinPress('9')">9</button>
+    <button class="pin-key" onclick="pinClear()" style="font-size:14px;">⌫</button>
+    <button class="pin-key" onclick="pinPress('0')">0</button>
+    <button class="pin-key" onclick="pinClear()" style="font-size:14px;color:rgba(255,255,255,.3);">C</button>
+  </div>
+</div>
 
 <div id="field"><canvas id="gc"></canvas></div>
 
@@ -147,6 +193,38 @@ body{flex-direction:row}
 </div>
 
 <script>
+// ─── PIN ──────────────────────────────────────────────────────
+const PIN_CODE = "2025";  // ← vaihda tähän haluamasi PIN
+let pinEntry = "";
+
+function pinPress(d){
+  if(pinEntry.length >= 4) return;
+  pinEntry += d;
+  updatePinDots();
+  if(pinEntry.length === 4) setTimeout(checkPin, 150);
+}
+function pinClear(){
+  pinEntry = pinEntry.slice(0, -1);
+  updatePinDots();
+  document.getElementById("pin-error").textContent = "";
+}
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    document.getElementById("pd"+i).className = "pin-dot" + (i < pinEntry.length ? " filled" : "");
+  }
+}
+function checkPin(){
+  if(pinEntry === PIN_CODE){
+    document.getElementById("pin-screen").style.display = "none";
+    newGame();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();setTimeout(resize,400);}));
+  } else {
+    document.getElementById("pin-error").textContent = "Väärä PIN — yritä uudelleen";
+    pinEntry = "";
+    updatePinDots();
+  }
+}
+
 // ─── Canvas & fixed geometry ──────────────────────────────────
 const W=340, H=500;
 const cv=document.getElementById("gc");
@@ -223,7 +301,7 @@ function resize(){
   let cw=fw,ch=cw*(H/W);
   if(ch>fh){ch=fh;cw=ch*(W/H);}
   cv.style.width=~~cw+"px";cv.style.height=~~ch+"px";
-  draw();
+  if(G.phase) draw();  // only draw if game has started
 }
 window.addEventListener("resize",()=>{resize();});
 
@@ -714,8 +792,8 @@ document.getElementById("srslide").oninput=function(){
   draw();
 };
 
-newGame();
-requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();setTimeout(resize,400);}));
+// PIN screen shown on load — newGame called after correct PIN
+requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();}));
 </script>
 
 </body>
