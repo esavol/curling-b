@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Curling B v26</title>
+<title>Curling B v32</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:#0a1520;font-family:sans-serif;color:#fff;user-select:none;-webkit-user-select:none}
@@ -32,10 +32,17 @@ display:flex;
 flex-direction:column;
 }
 
+/* Swipe zone — explicitly allows vertical scroll */
+#swipe-hint, #bottom, #info-header{
+touch-action:pan-y;
+}
+
 /* Info page */
 #page-info{
 background:#0a1520;
 overflow:hidden;
+display:flex;
+flex-direction:column;
 }
 #info-header{
 flex-shrink:0;
@@ -46,16 +53,16 @@ display:flex;align-items:center;justify-content:space-between;
 }
 #info-header h2{font-size:15px;font-weight:800;color:#f0a500;}
 #info-back{font-size:12px;color:rgba(255,255,255,.45);font-weight:700;cursor:pointer;padding:4px;}
-#info-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;}
+#info-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;}
 #info-scroll-inner{display:flex;flex-direction:column;gap:8px;padding-bottom:20px;}
 
 /* Swipe hint */
 #swipe-hint{
 flex-shrink:0;
 text-align:center;
-padding:5px;
+padding:10px;
 font-size:9px;
-color:rgba(255,255,255,.2);
+color:rgba(255,255,255,.25);
 letter-spacing:.5px;
 text-transform:uppercase;
 background:rgba(5,15,30,.97);
@@ -236,6 +243,7 @@ color:#fff;box-shadow:0 3px 12px rgba(192,57,43,.5);
 
 <!-- PAGE 1: GAME -->
 
+<div id="pages">
 <div id="page-game">
 
 <div id="field"><canvas id="gc"></canvas></div>
@@ -471,6 +479,28 @@ function hideInfo(){
   document.getElementById("page-game").scrollIntoView({behavior:"smooth"});
   setTimeout(resize,400);
 }
+
+// JS swipe on bottom+hint as fallback for when CSS scroll is blocked
+let swipeStartY=0;
+function addSwipeUp(el){
+  el.addEventListener("touchstart",e=>{swipeStartY=e.touches[0].clientY;},{passive:true});
+  el.addEventListener("touchend",e=>{
+    if(swipeStartY - e.changedTouches[0].clientY > 40) showInfo();
+  },{passive:true});
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  const sh=document.getElementById("swipe-hint");
+  const bt=document.getElementById("bottom");
+  if(sh) addSwipeUp(sh);
+  if(bt) addSwipeUp(bt);
+  const pi=document.getElementById("page-info");
+  if(pi){
+    pi.addEventListener("touchstart",e=>{swipeStartY=e.touches[0].clientY;},{passive:true});
+    pi.addEventListener("touchend",e=>{
+      if(e.changedTouches[0].clientY - swipeStartY > 40) hideInfo();
+    },{passive:true});
+  }
+});
 
 // ─── Audio ────────────────────────────────────────────────────
 let audioCtx=null;
