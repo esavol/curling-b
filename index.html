@@ -1,0 +1,1572 @@
+
+Curling b v56
+
+<!DOCTYPE html>
+
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Curling B v56</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a1520;font-family:sans-serif;color:#fff;user-select:none;-webkit-user-select:none}
+
+/* Native scroll container */
+#pages{
+width:100%;
+height:100vh;
+overflow-y:scroll;
+scroll-snap-type:y mandatory;
+-webkit-overflow-scrolling:touch;
+scrollbar-width:none;
+}
+#pages::-webkit-scrollbar{display:none;}
+
+/* Each page snaps */
+#page-game, #page-info{
+width:100%;
+height:100vh;
+scroll-snap-align:start;
+scroll-snap-stop:always;
+display:flex;
+flex-direction:column;
+}
+
+/* Swipe zone — explicitly allows vertical scroll */
+#swipe-hint, #bottom, #info-header{
+touch-action:pan-y;
+}
+
+/* Info page */
+#page-info{
+background:#0a1520;
+overflow:hidden;
+display:flex;
+flex-direction:column;
+}
+#info-header{
+flex-shrink:0;
+padding:12px 16px 8px;
+background:#0a1520;
+border-bottom:1px solid rgba(255,255,255,.08);
+display:flex;align-items:center;justify-content:space-between;
+}
+#info-header h2{font-size:15px;font-weight:800;color:#f0a500;}
+#info-back{font-size:12px;color:rgba(255,255,255,.45);font-weight:700;cursor:pointer;padding:4px;}
+#info-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;}
+#info-scroll-inner{display:flex;flex-direction:column;gap:8px;padding-bottom:20px;}
+
+/* Swipe hint */
+#swipe-hint{
+flex-shrink:0;
+text-align:center;
+padding:10px;
+font-size:9px;
+color:rgba(255,255,255,.25);
+letter-spacing:.5px;
+text-transform:uppercase;
+background:rgba(5,15,30,.97);
+}
+
+#field{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:2px;}
+canvas{display:block;border-radius:10px;touch-action:none;cursor:crosshair;
+box-shadow:0 4px 24px rgba(10,22,40,.9),0 0 0 1px rgba(46,125,196,.2);}
+
+#bottom{
+flex-shrink:0;
+background:rgba(5,15,30,.97);
+border-top:1px solid rgba(255,255,255,.08);
+padding:4px 8px 6px;
+}
+
+/* Single compact row */
+#score-row{display:flex;align-items:stretch;gap:5px;height:62px;}
+
+.sc-btn{
+flex:1;display:flex;flex-direction:row;align-items:center;justify-content:space-between;
+border:2px solid rgba(255,255,255,.1);border-radius:10px;padding:0 10px;
+cursor:pointer;transition:all .2s;background:rgba(255,255,255,.04);
+color:#fff;font-family:inherit;gap:6px;
+}
+.sc-btn.active-red{background:linear-gradient(135deg,#c0392b,#7b241c);border-color:#e74c3c;box-shadow:0 3px 14px rgba(192,57,43,.5);}
+.sc-btn.active-blue{background:linear-gradient(135deg,#2980b9,#1a5276);border-color:#2980b9;box-shadow:0 3px 14px rgba(41,128,185,.5);}
+.sc-btn.inactive{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);opacity:.45;}
+.sc-btn:disabled{cursor:default;}
+
+.sc-left{display:flex;flex-direction:column;align-items:flex-start;gap:1px;}
+.sc-label{font-size:9px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.4px;}
+.sc-throw{font-size:10px;font-weight:800;opacity:.9;}
+.sc-score{font-size:28px;font-weight:900;color:#fff;line-height:1;}
+
+/* PIN screen */
+#pin-screen{
+position:fixed;inset:0;z-index:999;
+background:#0a1520;
+display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+padding:30px;
+}
+#pin-screen h1{font-size:22px;font-weight:900;color:#f0a500;text-align:center;}
+#pin-screen p{font-size:13px;color:rgba(255,255,255,.5);text-align:center;}
+#pin-dots{display:flex;gap:12px;margin:8px 0;}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent;transition:.15s;}
+.pin-dot.filled{background:#f0a500;border-color:#f0a500;}
+#pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:260px;}
+.pin-key{
+padding:18px 0;font-size:22px;font-weight:700;
+border:1.5px solid rgba(255,255,255,.12);border-radius:12px;
+background:rgba(255,255,255,.06);color:#fff;cursor:pointer;
+transition:.1s;
+}
+.pin-key:active{background:rgba(255,255,255,.18);}
+#pin-error{font-size:12px;color:#e74c3c;min-height:16px;text-align:center;}
+
+/* Start screen — after PIN */
+#start-screen{
+position:fixed;inset:0;z-index:998;
+background:#0a1520;
+display:none;
+flex-direction:column;align-items:center;justify-content:center;gap:20px;
+padding:30px;
+}
+#start-screen h2{font-size:20px;font-weight:900;color:#f0a500;text-align:center;}
+#start-screen p{font-size:12px;color:rgba(255,255,255,.45);text-align:center;max-width:280px;line-height:1.6;}
+.start-btn{
+width:100%;max-width:260px;padding:16px;font-size:16px;font-weight:800;
+border:none;border-radius:12px;cursor:pointer;color:#fff;
+}
+#btn-play{background:linear-gradient(135deg,#c0392b,#7b241c);box-shadow:0 4px 16px rgba(192,57,43,.4);}
+#btn-demo{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);font-size:14px;}
+
+/* Demo overlay — shown on top of game view */
+#demo-screen{
+position:fixed;inset:0;z-index:996;
+display:none;
+pointer-events:none;
+}
+#demo-overlay{
+position:absolute;
+bottom:80px; /* above bottom bar */
+left:50%;transform:translateX(-50%);
+display:flex;flex-direction:column;align-items:center;gap:8px;
+pointer-events:auto;
+width:90%;max-width:300px;
+}
+#demo-label{
+background:rgba(5,15,30,.88);
+border:1px solid rgba(240,165,0,.3);
+border-radius:10px;
+padding:8px 14px;
+font-size:12px;font-weight:700;color:#f0a500;
+text-align:center;width:100%;
+backdrop-filter:blur(4px);
+}
+#demo-play-btn{
+width:100%;padding:12px;
+font-size:14px;font-weight:800;
+border:none;border-radius:10px;cursor:pointer;
+background:linear-gradient(135deg,#c0392b,#7b241c);
+color:#fff;box-shadow:0 3px 12px rgba(192,57,43,.5);
+}
+#mid-col{display:flex;flex-direction:column;align-items:center;justify-content:space-between;flex-shrink:0;padding:2px 0;}
+.era-pill{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:3px 7px;text-align:center;}
+.era-pill span{font-size:7px;opacity:.4;display:block;line-height:1.2}
+.era-pill b{font-size:12px;color:#c8e6f8;line-height:1.2}
+#bn{padding:5px 9px;font-size:10px;font-weight:700;border:1px solid rgba(255,255,255,.15);border-radius:7px;cursor:pointer;background:rgba(255,255,255,.07);color:#c8e6f8;white-space:nowrap;}
+
+.panel{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:9px 11px;font-size:10.5px;line-height:1.65;color:#c8e6f8}
+.panel h3{font-size:11px;color:#f0a500;margin-bottom:4px;font-weight:800}
+.panel h4{font-size:10px;color:#e8f4fd;margin-top:6px;font-weight:700}
+.srow{display:flex;flex-direction:column;gap:2px;margin-top:5px}
+.srow-top{display:flex;justify-content:space-between}
+.srow label{font-size:9px;opacity:.6;text-transform:uppercase}
+.srow span{font-size:11px;font-weight:800;color:#f0a500}
+.srow input[type=range]{width:100%;accent-color:#f0a500;height:5px}
+
+@media(orientation:landscape){
+#page-game{flex-direction:row;}
+#field{flex:1;padding:4px;}
+#bottom{width:200px;flex-shrink:0;border-top:none;border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;padding:8px;overflow:hidden;}
+#score-row{height:auto;flex-direction:column;gap:6px;flex:0 0 auto;}
+.sc-btn{flex-direction:column;align-items:center;justify-content:center;padding:8px;height:80px;}
+.sc-left{align-items:center;}
+#mid-col{flex-direction:row;width:100%;justify-content:space-between;padding:0;}
+#swipe-hint{display:none;}
+}
+@media(orientation:portrait){
+#score-row{display:flex;flex-direction:row;width:100%;}
+.sc-btn{flex:1;border-radius:0;}
+.sc-left{border-radius:0 0 0 0;}
+.sc-right{border-radius:0;}
+#mid-col{flex-shrink:0;}
+}
+</style>
+
+</head>
+<body>
+
+<div id="pin-screen">
+  <h1>🥌 Curling B</h1>
+  <p>Anna PIN-koodi pelataksesi</p>
+  <div id="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div id="pin-error"></div>
+  <div id="pin-pad">
+    <button class="pin-key" onclick="pinPress('1')">1</button>
+    <button class="pin-key" onclick="pinPress('2')">2</button>
+    <button class="pin-key" onclick="pinPress('3')">3</button>
+    <button class="pin-key" onclick="pinPress('4')">4</button>
+    <button class="pin-key" onclick="pinPress('5')">5</button>
+    <button class="pin-key" onclick="pinPress('6')">6</button>
+    <button class="pin-key" onclick="pinPress('7')">7</button>
+    <button class="pin-key" onclick="pinPress('8')">8</button>
+    <button class="pin-key" onclick="pinPress('9')">9</button>
+    <button class="pin-key" onclick="pinClear()" style="font-size:14px;">⌫</button>
+    <button class="pin-key" onclick="pinPress('0')">0</button>
+    <button class="pin-key" onclick="pinClear()" style="font-size:14px;color:rgba(255,255,255,.3);">C</button>
+  </div>
+</div>
+
+<!-- START SCREEN -->
+
+<div id="start-screen">
+  <h2>🥌 Curling B</h2>
+  <p>Vuoropohjainen pöytäcurling — heitä kiviä lähimmäksi keskustaa ja kerää pisteitä!</p>
+  <button class="start-btn" id="btn-play" onclick="startPlay(false)">▶ PELAA (2 pelaajaa)</button>
+  <button class="start-btn" id="btn-ai" onclick="startPlay(true)">🤖 PELAA TIETOKONETTA VASTAAN</button>
+  <button class="start-btn" id="btn-demo" onclick="startDemo()">🎬 KATSO DEMO</button>
+</div>
+
+<!-- DEMO SCREEN — overlay on top of game view -->
+
+<div id="demo-screen">
+  <div id="demo-overlay">
+    <div id="demo-label">Demo käynnistyy...</div>
+    <button id="demo-play-btn" onclick="skipDemo()">▶ PELAA</button>
+  </div>
+</div>
+
+<!-- PAGE 1: GAME -->
+
+<div id="pages">
+<div id="page-game">
+
+<div id="field"><canvas id="gc"></canvas></div>
+
+<div id="bottom">
+  <div id="score-row">
+    <button class="sc-btn active-red" id="br">
+      <div class="sc-left">
+        <div class="sc-label">🔴 Punainen</div>
+        <div class="sc-throw" id="throw0">HEITÄ</div>
+      </div>
+      <div class="sc-score" id="s0">0</div>
+    </button>
+    <div id="mid-col">
+      <div class="era-pill"><span>ERÄ</span><b id="ev">1/4</b><span id="hv">H 1/8</span></div>
+      <button id="bn">UUSI</button>
+    </div>
+    <button class="sc-btn inactive" id="bb" disabled>
+      <div class="sc-score" id="s1">0</div>
+      <div class="sc-left" style="align-items:flex-end;">
+        <div class="sc-label">🔵 Sininen</div>
+        <div class="sc-throw" id="throw1">🔨 HEITÄ</div>
+      </div>
+    </button>
+  </div>
+</div>
+
+<div id="swipe-hint" onclick="showInfo()">▲ &nbsp; ohjeet &amp; asetukset &nbsp; ▲</div>
+
+</div><!-- end page-game -->
+
+<!-- PAGE 2: INFO -->
+
+<div id="page-info">
+  <div id="info-header">
+    <h2>🥌 Ohjeet &amp; Asetukset</h2>
+    <span id="info-back" onclick="hideInfo()">▼ takaisin peliin</span>
+  </div>
+  <div id="info-scroll">
+    <div id="info-scroll-inner">
+
+<div class="panel">
+  <h3>⚙️ ASETUKSET</h3>
+  <div class="srow">
+    <div class="srow-top"><label>Liukuvuus</label><span id="frval">50%</span></div>
+    <input type="range" id="frslide" min="1" max="100" value="50">
+  </div>
+  <div class="srow">
+    <div class="srow-top"><label>Kiven koko</label><span id="srval">Keski</span></div>
+    <input type="range" id="srslide" min="8" max="20" value="13">
+  </div>
+</div>
+
+<div class="panel">
+  <h3>📊 TILANNE</h3>
+  <div style="display:flex;justify-content:space-between;margin-top:3px">
+    <span style="color:#e74c3c;font-weight:700">🔴 <span id="sr">0</span> p</span>
+    <span style="color:#2980b9;font-weight:700">🔵 <span id="sb">0</span> p</span>
+  </div>
+  <div id="sfgz" style="margin-top:5px;font-size:10px;opacity:.55">⚡ FGZ aktiivinen</div>
+</div>
+
+<div class="panel">
+  <h3>📋 PELISÄÄNNÖT</h3>
+  <h4>Tavoite</h4>Saa kivi lähimmäksi kotiympyrän keskipistettä.
+  <h4>Kulku</h4>Vuorotellen 4 kiveä/pelaaja, 4 erää. Erä 1: punainen aloittaa, sinisellä 🔨 hammer.
+  <h4>Pisteet — uusi sääntö</h4>Erän voittaja (lähin kivi) saa pisteen <b>jokaisesta kivestä</b> joka koskettaa ulointa ympyrää — myös vastustajan kivet lasketaan!
+  <h4>Hammer 🔨</h4>Viimeinen heitto erässä. Häviäjä saa hammerin seuraavaan erään. Tasapelierässä hammer pysyy.
+  <h4 style="color:#f0a500">⚡ FGZ-sääntö</h4>4 ensimmäisessä heitossa <b>suojakiviä ei saa poistaa</b>. Rikkomuksesta heittokivi poistetaan.
+  <h4>Näin pelaat</h4>
+  1. <b>Vasen reuna ↕</b> → heiton pituus<br>
+  2. <b>Vasen reuna → yläosaan oikealle</b> → poistoheitto<br>
+  3. <b>Kenttä</b> → sivusuunta<br>
+  4. Paina oman värisi HEITÄ
+</div>
+
+<div class="panel">
+  <h3>🎯 TAKTIIKKA</h3>
+  <h4>Pisteytysjärjestelmä muuttaa kaiken</h4>Voittaja saa pisteet <b>kaikista</b> ympyrässä olevista kivistä — myös vastustajan. Tämä on iso ero normaaliin curlingiin.
+  <h4>Nojakivi-strategia</h4>Jätä kiviä ympyrän ulkoreunalle. Ne tuovat sinulle pisteen jos voitat erän — etkä tarvitse parasta kiveä, riittää että sinulla on lähin. Vastustajan nojakivet hyödyttävät sinua jos voitat.
+  <h4>Älä poista vastustajan kiviä liikaa</h4>Jos olet johtamassa, poistoheitto <b>vähentää</b> voittajan (eli sinun) pisteitä. Poista vain jos vastustajalla on lähin kivi.
+  <h4>FGZ-vaihe — rakenna rohkeasti</h4>Neljä ensimmäistä kiveä ovat turvassa poistoheitoilta. Kannattaa rakentaa guardeja jotka pakottavat vastustajan hankaliin tilanteisiin.
+  <h4>Hammer on arvokas 🔨</h4>Viimeinen heitto erässä ratkaisee usein. Häviäjä saa hammerin seuraavaan erään — joskus kannattaa harkita antaako erän tarkoituksella vastustajalle pienin tappio jos saa hammerin takaisin.
+  <h4>Sivutörmäys 🎱</h4>Omaan kiveen törmääminen sivusta voi ohjata kiven lähemmäs napaa — vaikein mutta tehokkain heitto.
+</div>
+
+```
+</div><!-- end info-scroll-inner -->
+```
+
+  </div><!-- end info-scroll -->
+</div><!-- end page-info -->
+
+</div><!-- end pages -->
+
+<script>
+// ─── PIN ──────────────────────────────────────────────────────
+const PIN_CODE = "2025";  // ← vaihda tähän haluamasi PIN
+let pinEntry = "";
+
+function pinPress(d){
+  if(pinEntry.length >= 4) return;
+  pinEntry += d;
+  updatePinDots();
+  if(pinEntry.length === 4) setTimeout(checkPin, 150);
+}
+function pinClear(){
+  pinEntry = pinEntry.slice(0, -1);
+  updatePinDots();
+  document.getElementById("pin-error").textContent = "";
+}
+function updatePinDots(){
+  for(let i=0;i<4;i++){
+    document.getElementById("pd"+i).className = "pin-dot" + (i < pinEntry.length ? " filled" : "");
+  }
+}
+function checkPin(){
+  if(pinEntry === PIN_CODE){
+    document.getElementById("pin-screen").style.display = "none";
+    document.getElementById("start-screen").style.display = "flex";
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();}));
+  } else {
+    document.getElementById("pin-error").textContent = "Väärä PIN — yritä uudelleen";
+    pinEntry = "";
+    updatePinDots();
+  }
+}
+function startPlay(vsAI){
+  document.getElementById("start-screen").style.display="none";
+  newGame(vsAI);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();setTimeout(resize,400);}));
+}
+function startDemo(){
+  document.getElementById("start-screen").style.display="none";
+  document.getElementById("demo-screen").style.display="block";
+  G={era:1,me:4,pp:4,th:[0,0],turn:0,phase:"demo",
+     hammer:1,firstThrow:0,ax:W/2,power:0,zone:"vertical",
+     msg:"",sc:[0,0],st:[],own:-1,tid:null,bfgz:false};
+  dStones=[];
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();demoSeq();}));
+}
+function skipDemo(){
+  stopDemo();
+  document.getElementById("demo-screen").style.display="none";
+  newGame();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();setTimeout(resize,400);}));
+}
+
+// ─── Canvas & fixed geometry ──────────────────────────────────
+const W=340, H=500;
+const cv=document.getElementById("gc");
+const ctx=cv.getContext("2d");
+cv.width=W; cv.height=H;
+
+// Safari polyfill for roundRect
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
+    r=Math.min(r,w/2,h/2);
+    this.moveTo(x+r,y);
+    this.lineTo(x+w-r,y);this.arcTo(x+w,y,x+w,y+r,r);
+    this.lineTo(x+w,y+h-r);this.arcTo(x+w,y+h,x+w-r,y+h,r);
+    this.lineTo(x+r,y+h);this.arcTo(x,y+h,x,y+h-r,r);
+    this.lineTo(x,y+r);this.arcTo(x,y,x+r,y,r);
+    this.closePath();
+  };
+}
+
+// Fixed geometry — symmetric 65px margin all sides
+const HX=W/2, HY=170;
+const HR=[105,74,44,19];
+const HOG_Y=355;  // HY+HR[0]+80
+
+let SR=13, FRC=0.988;
+const MS=0.25;
+const COL=["#e74c3c","#2980b9"], COLL=["#ff7675","#74b9ff"];
+let UID=1;
+const uid=()=>UID++;
+const dH=s=>Math.sqrt((s.x-HX)**2+(s.y-HY)**2);
+const d2=(a,b)=>Math.sqrt((a.x-b.x)**2+(a.y-b.y)**2);
+const TEEY=()=>HY+HR[0];
+const HOGY=()=>HY+HR[0]+80;
+const isFGZ=s=>s.y>=TEEY()&&s.y<=HOGY();
+
+// ─── L-control geometry ───────────────────────────────────────
+// Vertical strip: x < LEFT_W,  y in [HORIZ_H .. VBOT]
+// Horizontal bar: y < HORIZ_H, x in [LEFT_W .. H_RIGHT]
+const ARC_MID_W=52;
+const ARC_TOP=22;
+const ARC_VBOT=H-SR-30;
+const ARC_OVER_H=28;
+
+const SPEED_HOG=1.730;
+const SPEED_TOP=5.205;
+
+function powerToSpeed(p){
+  if(p<=1) return SPEED_HOG + p*(SPEED_TOP-SPEED_HOG);
+  return SPEED_TOP + (p-1)*(SPEED_TOP-SPEED_HOG)*1.5;
+}
+function arcYtoPower(y){
+  return Math.max(0,Math.min(1,(ARC_VBOT-y)/(ARC_VBOT-ARC_TOP)));
+}
+function overXtoPower(x){
+  const cx=W/2, halfW=W/2-ARC_MID_W;
+  const dist=Math.abs(x-cx);
+  return 1+Math.max(0,Math.min(1,(halfW-dist)/halfW));
+}
+function inLeftStrip(p){return p.x<ARC_MID_W;}
+function inRightStrip(p){return p.x>W-ARC_MID_W;}
+function inOverBar(p){return p.y<ARC_TOP+ARC_OVER_H&&p.x>=ARC_MID_W&&p.x<=W-ARC_MID_W;}
+function inArcStrip(p){return inLeftStrip(p)||inRightStrip(p);}
+function simulateFinalY(speed){
+  let y=H-SR-8, vy=-speed, steps=0;
+  while(Math.abs(vy)>=MS&&steps<200000){y+=vy;vy*=FRC;steps++;if(y<-200)break;}
+  return y;
+}
+
+// ─── Resize ───────────────────────────────────────────────────
+function resize(){
+  const f=document.getElementById("field");
+  const fw=f.clientWidth-4,fh=f.clientHeight-4;
+  if(fw<10||fh<10){setTimeout(resize,100);return;}
+  let cw=fw,ch=cw*(H/W);
+  if(ch>fh){ch=fh;cw=ch*(W/H);}
+  cv.style.width=~~cw+"px";cv.style.height=~~ch+"px";
+  if(G&&G.phase) draw();
+}
+window.addEventListener("resize",()=>{resize();});
+
+// ─── Page navigation ──────────────────────────────────────────
+function showInfo(){
+  document.getElementById("page-info").scrollIntoView({behavior:"smooth"});
+}
+function hideInfo(){
+  document.getElementById("page-game").scrollIntoView({behavior:"smooth"});
+  setTimeout(resize,400);
+}
+
+// JS swipe on bottom+hint as fallback for when CSS scroll is blocked
+let swipeStartY=0;
+function addSwipeUp(el){
+  el.addEventListener("touchstart",e=>{swipeStartY=e.touches[0].clientY;},{passive:true});
+  el.addEventListener("touchend",e=>{
+    if(swipeStartY - e.changedTouches[0].clientY > 40) showInfo();
+  },{passive:true});
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  const sh=document.getElementById("swipe-hint");
+  const bt=document.getElementById("bottom");
+  if(sh) addSwipeUp(sh);
+  if(bt) addSwipeUp(bt);
+  const pi=document.getElementById("page-info");
+  if(pi){
+    pi.addEventListener("touchstart",e=>{swipeStartY=e.touches[0].clientY;},{passive:true});
+    pi.addEventListener("touchend",e=>{
+      if(e.changedTouches[0].clientY - swipeStartY > 40) hideInfo();
+    },{passive:true});
+  }
+});
+
+// ─── Audio ────────────────────────────────────────────────────
+let audioCtx=null;
+function getAudio(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playCollision(velocity=1){
+  try{
+    const ac=getAudio();
+    const buf=ac.createBuffer(1,ac.sampleRate*.06,ac.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++){
+      d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3)*Math.min(velocity,3);
+    }
+    const src=ac.createBufferSource();
+    src.buffer=buf;
+    const g=ac.createGain();g.gain.setValueAtTime(.7,ac.currentTime);
+    src.connect(g);g.connect(ac.destination);
+    src.start();
+  }catch(e){}
+}
+
+function playFanfare(){
+  try{
+    const ac=getAudio();
+    [[523,.0],[659,.15],[784,.3],[1047,.45]].forEach(([f,t])=>{
+      const o=ac.createOscillator(),g=ac.createGain();
+      o.frequency.value=f;o.type="triangle";
+      g.gain.setValueAtTime(0,ac.currentTime+t);
+      g.gain.linearRampToValueAtTime(.3,ac.currentTime+t+.05);
+      g.gain.linearRampToValueAtTime(0,ac.currentTime+t+.25);
+      o.connect(g);g.connect(ac.destination);
+      o.start(ac.currentTime+t);o.stop(ac.currentTime+t+.3);
+    });
+  }catch(e){}
+}
+
+// Web Speech — lukee vuoron ja pistetilanteen ääneen
+let speechQ=[];let speaking=false;let speechKeepAlive=null;
+
+function speak(text){
+  if(!window.speechSynthesis)return;
+  speechQ.push(text);
+  if(!speaking) nextSpeech();
+}
+
+function nextSpeech(){
+  if(!speechQ.length){
+    speaking=false;
+    if(speechKeepAlive){clearInterval(speechKeepAlive);speechKeepAlive=null;}
+    return;
+  }
+  speaking=true;
+  const u=new SpeechSynthesisUtterance(speechQ.shift());
+  u.lang="fi-FI";u.rate=0.92;u.pitch=1;
+  u.onend=()=>{
+    if(speechKeepAlive){clearInterval(speechKeepAlive);speechKeepAlive=null;}
+    speaking=false;
+    setTimeout(nextSpeech,120);
+  };
+  u.onerror=()=>{
+    if(speechKeepAlive){clearInterval(speechKeepAlive);speechKeepAlive=null;}
+    speaking=false;
+    setTimeout(nextSpeech,120);
+  };
+  // iOS/Chrome keepalive: speechSynthesis jaatyy ilman tata
+  if(speechKeepAlive) clearInterval(speechKeepAlive);
+  speechKeepAlive=setInterval(()=>{
+    if(speechSynthesis.speaking&&speechSynthesis.paused) speechSynthesis.resume();
+  },200);
+  speechSynthesis.speak(u);
+}
+
+function speakSituation(){
+  // Kerrotaan tilanne + kuka heittää seuraavaksi
+  const ih=G.st.filter(s=>dH(s)<HR[0]+s.r);
+  const throwsLeft=(G.me*2)-G.th[0]-G.th[1];
+  const nextName=G.turn===0?"Punainen":"Sininen";
+  const hammerInfo=G.hammer===G.turn?" hammerilla":"";
+
+  if(!ih.length){
+    speak("Piste potti on nyt tyhjä. "+nextName+" heittää"+hammerInfo+".");
+  } else {
+    ih.sort((a,b)=>dH(a)-dH(b));
+    const w=ih[0].o;
+    const p=ih.length;
+    const wName=w===0?"Punainen":"Sininen";
+    speak("Piste potti on nyt "+p+". "+wName+" johtaa. "+nextName+" heittää"+hammerInfo+".");
+  }
+}
+
+function speakScore(){
+  // Laske tilanne niin kuin erä loppuisi nyt
+  const ih=G.st.filter(s=>dH(s)<HR[0]+s.r);
+  if(!ih.length){
+    speak("Ei pisteitä");
+    return;
+  }
+  ih.sort((a,b)=>dH(a)-dH(b));
+  const w=ih[0].o;
+  const p=ih.length;
+  const wName=w===0?"Punainen":"Sininen";
+  speak(wName+" saisi "+p);
+}
+
+function speakTurn(){
+  const name=G.turn===0?"Punainen":"Sininen";
+  const hammerInfo=G.hammer===G.turn?" hammer":"";
+  speak(name+hammerInfo);
+}
+function speakEraResult(winner,points){
+  if(winner<0){speak("Ei pisteitä");}
+  else{speak((winner===0?"Punainen":"Sininen")+" saa "+points);}
+}
+function speakWinner(){
+  const[a,b]=G.sc;
+  if(a>b) speak("Punainen voitti");
+  else if(b>a) speak("Sininen voitti");
+  else speak("Tasapeli");
+}
+
+
+// ─── Demo engine ──────────────────────────────────────────────
+let dStones=[], dAnimId=null, dOnDone=null, demoTimer=null, dDemoFGZ=false;
+
+function resizeDemo(){resize();}
+function setDemoLabel(txt){document.getElementById("demo-label").textContent=txt;}
+
+function stopDemo(){
+  if(dAnimId){cancelAnimationFrame(dAnimId);dAnimId=null;}
+  if(demoTimer){clearTimeout(demoTimer);demoTimer=null;}
+  dOnDone=null;
+  speechQ=[];speaking=false;
+  if(speechKeepAlive){clearInterval(speechKeepAlive);speechKeepAlive=null;}
+  speechSynthesis&&speechSynthesis.cancel();
+}
+
+function endDemo(){
+  stopDemo();
+  setDemoLabel("🥌 Valmis! Paina PELAA");
+}
+
+function dRender(){
+  ctx.clearRect(0,0,W,H);
+  let g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#0d1f36");g.addColorStop(1,"#0a1520");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#dbeeff");g.addColorStop(.5,"#eaf5ff");g.addColorStop(1,"#cde8fa");
+  ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(6,6,W-12,H-12,10);ctx.fill();
+  ctx.save();ctx.globalAlpha=.04;ctx.strokeStyle="#7ab8e8";ctx.lineWidth=1;
+  for(let y=18;y<H-8;y+=15){ctx.beginPath();ctx.moveTo(6,y);ctx.lineTo(W-6,y);ctx.stroke();}
+  ctx.restore();
+  ctx.strokeStyle="rgba(100,160,220,.3)";ctx.lineWidth=1;ctx.setLineDash([5,7]);
+  ctx.beginPath();ctx.moveTo(W/2,10);ctx.lineTo(W/2,H-10);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle="rgba(200,50,50,.6)";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(10,HOG_Y);ctx.lineTo(W-10,HOG_Y);ctx.stroke();
+  ctx.fillStyle="rgba(200,50,50,.55)";ctx.font="bold 8px sans-serif";ctx.textAlign="right";
+  ctx.fillText("HOG",W-10,HOG_Y-3);
+  const hc=["rgba(200,40,40,.12)","rgba(240,240,255,.55)","rgba(30,80,200,.18)","rgba(200,40,40,.38)"];
+  for(let i=HR.length-1;i>=0;i--){
+    ctx.beginPath();ctx.arc(HX,HY,HR[i],0,Math.PI*2);
+    ctx.fillStyle=hc[i];ctx.fill();
+    ctx.strokeStyle=i===0?"rgba(200,40,40,.5)":"rgba(100,140,200,.35)";
+    ctx.lineWidth=i===0?2:1;ctx.stroke();
+  }
+  ctx.strokeStyle="rgba(100,140,200,.3)";ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(HX-HR[0]-8,HY);ctx.lineTo(HX+HR[0]+8,HY);ctx.stroke();
+  // FGZ-alue — näytetään aina demossa
+  {
+    const tee=TEEY(),hog=HOGY();
+    ctx.save();
+    ctx.globalAlpha=.10;ctx.fillStyle="#f0a500";ctx.fillRect(6,tee,W-12,hog-tee);
+    ctx.globalAlpha=.55;ctx.strokeStyle="#f0a500";ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(10,tee);ctx.lineTo(W-10,tee);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle="rgba(240,165,0,.6)";ctx.font="bold 8px sans-serif";ctx.textAlign="center";
+    ctx.fillText("⚡ FGZ",W/2,(tee+hog)/2+3);ctx.restore();
+  }
+
+  for(const s of dStones){
+    if(s.gone)continue;
+    ctx.save();ctx.globalAlpha=.14;ctx.fillStyle="#000";
+    ctx.beginPath();ctx.ellipse(s.x+2,s.y+3,s.r*.9,s.r*.5,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    const gr=ctx.createRadialGradient(s.x-3,s.y-3,2,s.x,s.y,s.r);
+    gr.addColorStop(0,COLL[s.o]);gr.addColorStop(1,COL[s.o]);
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=1.5;ctx.stroke();
+    ctx.beginPath();ctx.arc(s.x-3,s.y-3,s.r*.26,0,Math.PI*2);
+    ctx.fillStyle="rgba(255,255,255,.3)";ctx.fill();
+  }
+}
+
+function dSimStep(){
+  let mv=false;
+  // Demo FGZ: viimeksi lisätty kivi on heittokivi (korkein indeksi, liikkuva)
+  const flying=dStones.filter(s=>Math.abs(s.vy)>MS||Math.abs(s.vx)>MS);
+  const thrownO=flying.length>0?flying[flying.length-1].o:-1;
+  const fgzOn=dDemoFGZ; // asetetaan dLaunch:ssa
+  for(const s of dStones){
+    if(Math.abs(s.vx)<MS&&Math.abs(s.vy)<MS){s.vx=s.vy=0;continue;}
+    s.x+=s.vx;s.y+=s.vy;s.vx*=FRC;s.vy*=FRC;mv=true;
+    if(s.x<-60||s.x>W+60||s.y<-80||s.y>H+80){s.vx=s.vy=0;s.gone=true;}
+    for(const o of dStones){
+      if(o===s||o.gone)continue;
+      const dd=Math.sqrt((s.x-o.x)**2+(s.y-o.y)**2);
+      if(dd<s.r+o.r&&dd>.01){
+        const nx=(o.x-s.x)/dd,ny=(o.y-s.y)/dd;
+        const dv=(s.vx-o.vx)*nx+(s.vy-o.vy)*ny;
+        if(dv>0){
+          // FGZ: jos kohde on eri joukkue ja FGZ aktiivinen ja kohde on FGZ-alueella
+          if(fgzOn && o.o!==s.o && isFGZ(o)){
+            // Heittokivi kimpoaa, suojakivi ei liiku
+            s.vx-=2*dv*nx; s.vy-=2*dv*ny;
+            const ov=s.r+o.r-dd; s.x-=ov*nx; s.y-=ov*ny;
+          } else {
+            s.vx-=dv*nx;s.vy-=dv*ny;o.vx+=dv*nx;o.vy+=dv*ny;
+            const ov=(s.r+o.r-dd)/2;s.x-=ov*nx;s.y-=ov*ny;o.x+=ov*nx;o.y+=ov*ny;
+            playCollision(dv);
+          }
+        }
+      }
+    }
+  }
+  dStones=dStones.filter(s=>!s.gone);
+  dRender();
+  if(mv){dAnimId=requestAnimationFrame(dSimStep);}
+  else{if(dOnDone){const f=dOnDone;dOnDone=null;setTimeout(f,900);}}
+}
+
+function dLaunch(stone,onDone){
+  dStones.push(stone);dOnDone=onDone;
+  if(dAnimId)cancelAnimationFrame(dAnimId);
+  dAnimId=requestAnimationFrame(dSimStep);
+}
+
+// ─── Demo helpers ─────────────────────────────────────────────
+// Demo käyttää normaalia draw()-funktiota G-tilan kautta
+function demoInitState(){
+  // Alusta G demo-tilaan: aim-vaihe, punainen vuorossa, ei kiviä
+  G={era:1,me:4,pp:4,th:[0,0],turn:0,phase:"aim",
+     hammer:1,firstThrow:0,
+     ax:W/2,power:0.0,zone:"vertical",
+     msg:"Demo",sc:[0,0],st:[],own:-1,tid:null,bfgz:false,ai:-1};
+}
+
+function demoSeq(){
+  // Esittely + kivet liikkuvat samaan aikaan
+  dStones=[];
+  dRender();
+  setDemoLabel("🥌 Pöytäcurling — seurapeli kaikille");
+  speak("Pöytäcurling on uusi seurapeli, joka tuo curlingin jännityksen tavalliseen biljardipöytään.");
+  // Punainen suojakivi lähtee heti
+  demoTimer=setTimeout(()=>{
+    dLaunch({x:W/2, y:H-SR-8, vx:0, vy:-3.93, o:0, r:SR}, ()=>{
+      speak("Kivi liikkuu aina suoraan ja heiton voima määrää matkan.");
+      demoTimer=setTimeout(()=>{
+        dLaunch({x:W/2+14, y:H-SR-8, vx:0, vy:-3.0, o:1, r:SR}, ()=>{
+          speak("Peli sopii kaikille — ensikertalainen onnistuu heti, kokeneempi löytää taktiset mahdollisuudet.");
+          demoTimer=setTimeout(()=>{
+            dLaunch({x:W/2-20, y:H-SR-8, vx:0, vy:-3.93, o:0, r:SR}, ()=>{
+              speak("Osumalla omaan kiveen sivusta pelaaja ohjaa sen poikittain — tämä on nojakivi-taktiikan ydin.");
+              const blue=dStones.filter(s=>s.o===1).sort((a,b)=>
+                Math.sqrt((a.x-HX)**2+(a.y-HY)**2)-Math.sqrt((b.x-HX)**2+(b.y-HY)**2))[0];
+              const lx=blue?blue.x+14:W/2+14;
+              demoTimer=setTimeout(()=>{
+                dLaunch({x:lx, y:H-SR-8, vx:0, vy:-4.3, o:1, r:SR}, ()=>{
+                  speak("Täydellä joukkueella neljä vastaan neljä peli sopii luontevasti biljardin rinnalle ravintoloihin ja seuroihin.");
+                  demoTimer=setTimeout(demoSeqControls, 5000);
+                });
+              }, 1500);
+            });
+          }, 1800);
+        });
+      }, 1800);
+    });
+  }, 800);
+}
+
+function demoSeqControls(){
+  demoInitState();
+  G.ax=W/2; G.power=0.0;
+  G.phase="aim";
+  setDemoLabel("🕹️ Pelisimulaattori — näin pelaat");
+  speak("Pelisimulaattori toimii seuraavasti. Heittolinja valitaan napauttamalla kentän keskiosaa.");
+  demoAnimateAim(W/2-50, W/2+40, 3000, ()=>{
+    G.ax=W/2+20;
+    speak("Voima valitaan vetämällä reunakaistasta ylöspäin — mitä ylemmäs, sitä kovempi heitto.");
+    demoAnimateControl(0.82, 4000, ()=>{
+      demoTimer=setTimeout(demoSeqTactics, 1500);
+    });
+  });
+}
+
+function demoSeqTactics(){
+  dStones=[];dRender();
+  setDemoLabel("📋 Pisteytysjärjestelmä");
+  speak("Erän voittaja saa pisteet kaikista ympyrässä olevista kivistä — myös vastustajan.");
+  demoTimer=setTimeout(()=>{
+    // Punainen heittää napaan
+    dLaunch({x:W/2+8, y:H-SR-8, vx:0, vy:-3.93, o:0, r:SR}, ()=>{
+      speak("Punainen on lähinnä napaa — johtaa erää.");
+      demoTimer=setTimeout(()=>{
+        // Sininen nojakivi ulkoreunalle
+        dLaunch({x:W/2+HR[0]*0.7, y:H-SR-8, vx:0, vy:-3.0, o:1, r:SR}, ()=>{
+          speak("Sininen jättää nojakiven ympyrän reunalle. Jos sininen voittaa erän se tuo lisäpisteen.");
+          demoTimer=setTimeout(demoSeq7, 4500);
+        });
+      }, 1400);
+    });
+  }, 900);
+}
+
+// Animoi heittolinja: siirtää kiveä hitaasti vasemmalta oikealle
+function demoAnimateAim(fromX, toX, duration, onDone){
+  const steps=30, interval=duration/steps;
+  let i=0;
+  function tick(){
+    i++;
+    G.ax=fromX+(toX-fromX)*(i/steps);
+    draw(); // käyttää normaalia draw() — näyttää kentän + ohjaimen oikein
+    if(i<steps) demoTimer=setTimeout(tick, interval);
+    else onDone();
+  }
+  tick();
+}
+
+// Animoi voima: nostaa G.power hitaasti ylöspäin
+function demoAnimateControl(targetPower, duration, onDone){
+  const steps=40, interval=duration/steps;
+  let i=0;
+  function tick(){
+    i++;
+    G.power=targetPower*(i/steps);
+    draw(); // käyttää normaalia draw() — näyttää voiman oikein kaistalla
+    if(i<steps) demoTimer=setTimeout(tick, interval);
+    else onDone();
+  }
+  tick();
+}
+
+
+
+function demoSeq7(){
+  setDemoLabel("🛡️ FGZ-sääntö — suojakivi ei liiku");
+  speak("FGZ-sääntö: neljän ensimmäisen heiton aikana suojakiveä ei saa poistaa.");
+  demoTimer=setTimeout(()=>{
+    // Punainen suojakivi FGZ-alueelle
+    dLaunch({x:W/2, y:H-SR-8, vx:0, vy:-2.21, o:0, r:SR}, ()=>{
+      speak("Punainen suojakivi pysähtyi FGZ-alueelle.");
+      demoTimer=setTimeout(()=>{
+        // Sininen yrittää poistaa suojakiven — tähtää suoraan siihen
+        const guard=dStones.filter(s=>s.o===0&&!s.gone)[0];
+        const tx=guard?guard.x:W/2;
+        speak("Sininen yrittää poistaa suojakiven — mutta FGZ-sääntö estää sen.");
+        dDemoFGZ=true; // aktivoi FGZ demo-fysiikkaan
+        demoTimer=setTimeout(()=>{
+          dLaunch({x:tx, y:H-SR-8, vx:0, vy:-5.5, o:1, r:SR}, ()=>{
+            dDemoFGZ=false;
+            speak("Suojakivi ei liikkunut — sinisen heittokivi kimpoaa pois. Rakenna suojakivi ensin, sitten hyödynnä sitä.");
+            demoTimer=setTimeout(demoSeq8, 4500);
+          });
+        }, 1500);
+      }, 2000);
+    });
+  }, 1000);
+}
+function demoSeq8(){
+  setDemoLabel("Poistoheitto — poista vastustajan lähin kivi");
+  speak("Kun vastustajalla on lähin kivi, poistoheitto kannattaa. Sininen poistaa lähimmän punaisen kiven napan läheltä.");
+  demoTimer=setTimeout(()=>{
+    // Ensin punainen lisää kiven napaan
+    dLaunch({x:W/2+5, y:H-SR-8, vx:0, vy:-3.93, o:0, r:SR}, ()=>{
+      demoTimer=setTimeout(()=>{
+        // Sininen poistoheitto — tähtää lähintä punaista
+        const redNear=dStones.filter(s=>s.o===0&&!s.gone).sort((a,b)=>
+          Math.sqrt((a.x-HX)**2+(a.y-HY)**2)-Math.sqrt((b.x-HX)**2+(b.y-HY)**2))[0];
+        const tx=redNear?redNear.x:W/2;
+        dLaunch({x:tx, y:H-SR-8, vx:0, vy:-5.5, o:1, r:SR}, ()=>{
+          const sorted=dStones.filter(s=>!s.gone).sort((a,b)=>
+            Math.sqrt((a.x-HX)**2+(a.y-HY)**2)-Math.sqrt((b.x-HX)**2+(b.y-HY)**2));
+          const leader=sorted.length>0?sorted[0].o:-1;
+          const lName=leader===0?"Punainen johtaa edelleen":"Sininen nappaa johdon";
+          speak("Poistoheitto osui. "+lName+".");
+          demoTimer=setTimeout(demoSeq9, 4000);
+        });
+      }, 1500);
+    });
+  }, 1000);
+}
+function demoSeq9(){
+  setDemoLabel("Hammer 🔨 — viimeinen heitto ratkaisee");
+  speak("Hammer on arvokas — viimeinen heitto erässä ratkaisee usein. Häviäjä saa hammerin seuraavaan erään.");
+  demoTimer=setTimeout(()=>{
+    // Sininen poistoheitto — tähtää lähintä punaista kiveä kohti
+    const redStones=dStones.filter(s=>s.o===0&&!s.gone).sort((a,b)=>
+      Math.sqrt((a.x-HX)**2+(a.y-HY)**2)-Math.sqrt((b.x-HX)**2+(b.y-HY)**2));
+    const target=redStones.length>0?redStones[0]:null;
+    const lx=target?target.x:W/2;
+    // Poistoheitto: kova vauhti jotta osuu ja siirtää
+    dLaunch({x:lx, y:H-SR-8, vx:0, vy:-5.5, o:1, r:SR}, ()=>{
+      const after=dStones.filter(s=>!s.gone).sort((a,b)=>
+        Math.sqrt((a.x-HX)**2+(a.y-HY)**2)-Math.sqrt((b.x-HX)**2+(b.y-HY)**2));
+      const winner=after.length>0?after[0].o:-1;
+      const pts=after.filter(s=>Math.sqrt((s.x-HX)**2+(s.y-HY)**2)<HR[0]).length;
+      const wName=winner===0?"Punainen":"Sininen";
+      speak("Poistoheitto osui. "+wName+" voittaa erän ja saa "+pts+" pistettä ympyrästä.");
+      demoTimer=setTimeout(demoSeq10, 5000);
+    });
+  }, 2000);
+}
+function demoSeq10(){
+  dRender();
+  setDemoLabel("🥌 Kokeile itse!");
+  speak("Pöytäcurling sopii kaikille. Pelaa kaveria vastaan tai haasta tietokone.");
+  demoTimer=setTimeout(endDemo, 5000);
+}
+
+
+// ─── Game State ───────────────────────────────────────────────
+// G.power: 0=HOG, 1=houseTop, >1=over-power
+// G.zone: "vertical" | "horizontal"
+// G.hammer: 0 or 1 — who throws last this era (the advantage)
+// G.firstThrow: who throws first this era (opposite of hammer)
+let G={};
+function newGame(vsAI){
+  // Arvotaan kumpi on tietokone jos vsAI
+  const ai = (vsAI===true) ? (Math.random()<0.5 ? 0 : 1) : -1;
+  if(vsAI) speak("Tietokone pelaa "+(ai===0?"punaisena":"sinisenä")+".");
+  // Era 1: punainen (0) aloittaa ensin → sinisellä (1) on hammer
+  G={era:1,me:4,pp:4,th:[0,0],turn:0,phase:"aim",
+     hammer:1, firstThrow:0,
+     ax:W/2, power:0, zone:"vertical",
+     msg:"🔴 PUNAINEN aloittaa",
+     sc:[0,0],st:[],own:-1,tid:null,bfgz:false,
+     ai:ai};
+  updateUI();draw();
+  setTimeout(()=>{speakTurn(); if(G.ai===G.turn) setTimeout(aiThrow,1200);},300);
+}
+
+function updateUI(){
+  const tt=G.th[0]+G.th[1];
+  document.getElementById("s0").textContent=G.sc[0];
+  document.getElementById("s1").textContent=G.sc[1];
+  document.getElementById("sr").textContent=G.sc[0];
+  document.getElementById("sb").textContent=G.sc[1];
+  document.getElementById("ev").textContent=G.era+"/4";
+  document.getElementById("hv").textContent="H "+Math.min(tt+1,8)+"/8";
+  document.getElementById("sfgz").textContent=tt<4?"⚡ FGZ aktiivinen":"FGZ päättynyt";
+  // Hammer indicator on throw labels
+  const br=document.getElementById("br"), bb=document.getElementById("bb");
+  br.className="sc-btn"+(G.turn===0&&G.phase!=="end"?" active-red":" inactive");
+  bb.className="sc-btn"+(G.turn===1&&G.phase!=="end"?" active-blue":" inactive");
+  br.disabled=!(G.phase==="aim"&&G.turn===0);
+  bb.disabled=!(G.phase==="aim"&&G.turn===1);
+  // Update throw label to show hammer
+  document.getElementById("throw0").textContent=G.hammer===0?"🔨 HEITÄ":"HEITÄ";
+  document.getElementById("throw1").textContent=G.hammer===1?"🔨 HEITÄ":"HEITÄ";
+}
+const setMsg=t=>{G.msg=t;draw();};
+
+// ─── Draw ─────────────────────────────────────────────────────
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const et=G.th[0]+G.th[1];
+
+  // BG
+  let g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#0d1f36");g.addColorStop(1,"#0a1520");
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+  // Ice
+  g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#dbeeff");g.addColorStop(.5,"#eaf5ff");g.addColorStop(1,"#cde8fa");
+  ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(6,6,W-12,H-12,10);ctx.fill();
+
+  // Grain
+  ctx.save();ctx.globalAlpha=.04;ctx.strokeStyle="#7ab8e8";ctx.lineWidth=1;
+  for(let y=18;y<H-8;y+=15){ctx.beginPath();ctx.moveTo(6,y);ctx.lineTo(W-6,y);ctx.stroke();}
+  ctx.restore();
+
+  // Center line
+  ctx.strokeStyle="rgba(100,160,220,.3)";ctx.lineWidth=1;ctx.setLineDash([5,7]);
+  ctx.beginPath();ctx.moveTo(W/2,10);ctx.lineTo(W/2,H-10);ctx.stroke();ctx.setLineDash([]);
+
+  // FGZ
+  const tee=TEEY(),hog=HOGY();
+  if(et<4){
+    ctx.save();
+    ctx.globalAlpha=.1;ctx.fillStyle="#f0a500";ctx.fillRect(6,tee,W-12,hog-tee);
+    ctx.globalAlpha=.6;ctx.strokeStyle="#f0a500";ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(10,tee);ctx.lineTo(W-10,tee);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle="rgba(240,165,0,.65)";ctx.font="bold 8px sans-serif";ctx.textAlign="center";
+    ctx.fillText("⚡ FGZ",W/2,(tee+hog)/2+3);ctx.restore();
+  }
+
+  // Stone dots — vertical columns on left (red) and right (blue) edge, near bottom
+  {
+    const dotR=5, gap=6;
+    const bottomY=H-50;
+    const leftX=ARC_MID_W/2;  // vasemman kaistaleen keskellä
+    const rightX=W-ARC_MID_W/2;  // oikean kaistaleen keskellä
+    ctx.save();
+    for(let i=0;i<4;i++){
+      const dy=bottomY-i*(dotR*2+gap);
+      ctx.globalAlpha=i<G.th[0]?.2:.85;
+      ctx.fillStyle="#e74c3c";
+      ctx.beginPath();ctx.arc(leftX,dy,dotR,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=i<G.th[0]?.1:.4;
+      ctx.strokeStyle="#fff";ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(leftX,dy,dotR,0,Math.PI*2);ctx.stroke();
+    }
+    for(let i=0;i<4;i++){
+      const dy=bottomY-i*(dotR*2+gap);
+      ctx.globalAlpha=i<G.th[1]?.2:.85;
+      ctx.fillStyle="#2980b9";
+      ctx.beginPath();ctx.arc(rightX,dy,dotR,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=i<G.th[1]?.1:.4;
+      ctx.strokeStyle="#fff";ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(rightX,dy,dotR,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.strokeStyle="rgba(200,50,50,.6)";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(10,HOG_Y);ctx.lineTo(W-10,HOG_Y);ctx.stroke();
+  ctx.fillStyle="rgba(200,50,50,.55)";ctx.font="bold 8px sans-serif";ctx.textAlign="right";
+  ctx.fillText("HOG",W-10,HOG_Y-3);
+
+  // House
+  const hc=["rgba(200,40,40,.12)","rgba(240,240,255,.55)","rgba(30,80,200,.18)","rgba(200,40,40,.38)"];
+  for(let i=HR.length-1;i>=0;i--){
+    ctx.beginPath();ctx.arc(HX,HY,HR[i],0,Math.PI*2);
+    ctx.fillStyle=hc[i];ctx.fill();
+    ctx.strokeStyle=i===0?"rgba(200,40,40,.5)":"rgba(100,140,200,.35)";
+    ctx.lineWidth=i===0?2:1;ctx.stroke();
+  }
+  ctx.strokeStyle="rgba(100,140,200,.3)";ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(HX-HR[0]-8,HY);ctx.lineTo(HX+HR[0]+8,HY);ctx.stroke();
+
+  // arc control overlay
+  if(G.phase==="aim"){
+    const ax=G.ax, pwr=G.power, col=COL[G.turn], coll=COLL[G.turn];
+    const stoneY=H-SR-8;
+    const isOver=G.zone==="horizontal";
+    const lx=ARC_MID_W/2, rx=W-ARC_MID_W/2;
+    const dotY=ARC_VBOT - pwr*(ARC_VBOT-ARC_TOP);
+
+    // Side strip backgrounds
+    ctx.save();
+    ctx.globalAlpha=.13;ctx.fillStyle=col;
+    ctx.beginPath();ctx.roundRect(2,ARC_TOP,ARC_MID_W-2,ARC_VBOT-ARC_TOP,6);ctx.fill();
+    ctx.beginPath();ctx.roundRect(W-ARC_MID_W,ARC_TOP,ARC_MID_W-2,ARC_VBOT-ARC_TOP,6);ctx.fill();
+    // Over-power bar background (top center)
+    ctx.globalAlpha=.10;ctx.fillStyle="#e74c3c";
+    ctx.beginPath();ctx.roundRect(ARC_MID_W,2,W-ARC_MID_W*2,ARC_TOP+ARC_OVER_H,6);ctx.fill();
+
+    // Dashed guides up both strips
+    ctx.globalAlpha=.22;ctx.strokeStyle=col;ctx.lineWidth=1;ctx.setLineDash([3,4]);
+    ctx.beginPath();ctx.moveTo(lx,ARC_TOP);ctx.lineTo(lx,ARC_VBOT);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(rx,ARC_TOP);ctx.lineTo(rx,ARC_VBOT);ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Arc hint connecting tops through center
+    ctx.globalAlpha=.18;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.setLineDash([4,5]);
+    ctx.beginPath();ctx.moveTo(lx,ARC_TOP);ctx.quadraticCurveTo(W/2,-10,rx,ARC_TOP);
+    ctx.stroke();ctx.setLineDash([]);
+
+    // Labels
+    ctx.globalAlpha=.45;ctx.fillStyle="#a0c8e8";ctx.font="bold 7px sans-serif";ctx.textAlign="center";
+    ctx.fillText("LYH",lx,ARC_VBOT-4);ctx.fillText("LYH",rx,ARC_VBOT-4);
+    ctx.fillText("MAX",lx,ARC_TOP+10);ctx.fillText("MAX",rx,ARC_TOP+10);
+    ctx.fillStyle="#ffaaaa";ctx.fillText("POISTOHEITTO",W/2,(ARC_TOP+ARC_OVER_H)/2+3);
+    ctx.restore();
+
+    // Predicted landing dot
+    const predSpeed=powerToSpeed(pwr);
+    const predY=simulateFinalY(predSpeed);
+    ctx.save();
+    ctx.globalAlpha=.3;ctx.strokeStyle=col;ctx.lineWidth=1;ctx.setLineDash([3,5]);
+    ctx.beginPath();ctx.moveTo(ax,stoneY-SR);ctx.lineTo(ax,Math.max(predY,10));ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha=.5;ctx.fillStyle=col;
+    ctx.beginPath();ctx.arc(ax,Math.max(predY,10),4,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle="#fff";ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+
+    // Control dots on both strips
+    ctx.save();
+    ctx.globalAlpha=.95;
+    for(const dx of [lx,rx]){
+      ctx.beginPath();ctx.arc(dx,dotY,7,0,Math.PI*2);
+      ctx.fillStyle=col;ctx.fill();
+      ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.stroke();
+    }
+    ctx.globalAlpha=.5;ctx.strokeStyle="#fff";ctx.lineWidth=1;
+    for(const dx of [lx,rx]){
+      ctx.beginPath();
+      ctx.moveTo(dx-5,dotY);ctx.lineTo(dx+5,dotY);
+      ctx.moveTo(dx,dotY-5);ctx.lineTo(dx,dotY+5);
+      ctx.stroke();
+    }
+    // Over-power center bar fill
+    if(isOver){
+      const overFrac=pwr-1;
+      const barW=overFrac*(W-ARC_MID_W*2);
+      ctx.globalAlpha=.4;ctx.fillStyle="#e74c3c";
+      ctx.beginPath();ctx.roundRect(W/2-barW/2,2,barW,ARC_TOP+ARC_OVER_H-2,4);ctx.fill();
+      ctx.globalAlpha=1;ctx.fillStyle="#fff";ctx.font="bold 8px sans-serif";ctx.textAlign="center";
+      ctx.fillText("POISTOHEITTO "+Math.round(overFrac*100)+"%",W/2,(ARC_TOP+ARC_OVER_H)/2+3);
+    }
+    ctx.restore();
+
+    // Aim line + stone
+    ctx.save();
+    ctx.globalAlpha=.35;ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.setLineDash([5,6]);
+    ctx.beginPath();ctx.moveTo(ax,ARC_TOP+ARC_OVER_H+4);ctx.lineTo(ax,stoneY-SR);ctx.stroke();
+    ctx.setLineDash([]);
+    const gr=ctx.createRadialGradient(ax-3,stoneY-3,2,ax,stoneY,SR);
+    gr.addColorStop(0,coll);gr.addColorStop(1,col);
+    ctx.globalAlpha=1;
+    ctx.beginPath();ctx.arc(ax,stoneY,SR,0,Math.PI*2);ctx.fillStyle=gr;ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.4)";ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle="#fff";ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(ax,stoneY-SR-2);ctx.lineTo(ax,stoneY-SR-12);
+    ctx.moveTo(ax-4,stoneY-SR-8);ctx.lineTo(ax,stoneY-SR-12);ctx.lineTo(ax+4,stoneY-SR-8);
+    ctx.stroke();
+    ctx.restore();
+  }
+  // Stones
+  for(const s of G.st){
+    const et2=G.th[0]+G.th[1];
+    const gd=et2<4&&isFGZ(s);
+    ctx.save();ctx.globalAlpha=.14;ctx.fillStyle="#000";
+    ctx.beginPath();ctx.ellipse(s.x+2,s.y+3,s.r*.9,s.r*.5,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    let g2=ctx.createRadialGradient(s.x-3,s.y-3,2,s.x,s.y,s.r);
+    g2.addColorStop(0,COLL[s.o]);g2.addColorStop(1,COL[s.o]);
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=g2;ctx.fill();
+    if(gd){ctx.strokeStyle="#f0a500";ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(s.x,s.y,s.r+3,0,Math.PI*2);ctx.stroke();}
+    ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r*.55,0,Math.PI*2);
+    ctx.strokeStyle="rgba(255,255,255,.25)";ctx.lineWidth=1;ctx.stroke();
+    ctx.beginPath();ctx.arc(s.x-3,s.y-3,s.r*.26,0,Math.PI*2);
+    ctx.fillStyle="rgba(255,255,255,.3)";ctx.fill();
+  }
+
+  // Best stone ring
+  const ih=G.st.filter(s=>dH(s)<HR[0]+s.r);
+  if(ih.length>0){
+    ih.sort((a,b)=>dH(a)-dH(b));
+    ctx.save();ctx.globalAlpha=.5;ctx.strokeStyle=COL[ih[0].o];ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.arc(HX,HY,dH(ih[0]),0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  }
+
+  // End screen
+  if(G.phase==="end"){
+    ctx.save();ctx.globalAlpha=.75;ctx.fillStyle="#0a1628";ctx.fillRect(0,0,W,H);ctx.restore();
+    const[a,b]=G.sc,w=a>b?0:b>a?1:-1;
+    ctx.fillStyle=w>=0?COL[w]:"#f0a500";ctx.font="bold 24px sans-serif";ctx.textAlign="center";
+    ctx.fillText(w===0?"🔴 PUNAINEN VOITTI!":w===1?"🔵 SININEN VOITTI!":"🤝 TASAPELI!",W/2,H/2-36);
+    ctx.fillStyle="#fff";ctx.font="bold 52px sans-serif";ctx.fillText(a+" – "+b,W/2,H/2+14);
+    ctx.fillStyle="rgba(255,255,255,.45)";ctx.font="13px sans-serif";
+    ctx.fillText("Paina UUSI aloittaaksesi",W/2,H/2+52);
+  }
+}
+
+// ─── Physics ──────────────────────────────────────────────────
+let aid=null;
+function step(){
+  const et=G.th[0]+G.th[1],fon=et<=4,own=G.own;
+  let mv=false;
+  for(const s of G.st){
+    if(fon&&s.o!==own&&isFGZ(s)){s.vx=0;s.vy=0;continue;}
+    if(Math.abs(s.vx)<MS&&Math.abs(s.vy)<MS){s.vx=s.vy=0;continue;}
+    s.x+=s.vx;s.y+=s.vy;s.vx*=FRC;s.vy*=FRC;mv=true;
+    if(s.x<-60||s.x>W+60||s.y<-80||s.y>H+80){s.vx=s.vy=0;s.gone=true;}
+    for(const o of G.st){
+      if(o===s||o.gone)continue;
+      const dd=d2(s,o);
+      if(dd<s.r+o.r&&dd>.01){
+        const nx=(o.x-s.x)/dd,ny=(o.y-s.y)/dd;
+        const dv=(s.vx-o.vx)*nx+(s.vy-o.vy)*ny;
+        if(dv>0){
+          if(fon&&o.o!==own&&isFGZ(o)){
+            s.vx-=2*dv*nx;s.vy-=2*dv*ny;
+            const ov=s.r+o.r-dd;s.x-=ov*nx;s.y-=ov*ny;G.bfgz=true;
+          } else {
+            s.vx-=dv*nx;s.vy-=dv*ny;o.vx+=dv*nx;o.vy+=dv*ny;
+            const ov=(s.r+o.r-dd)/2;s.x-=ov*nx;s.y-=ov*ny;o.x+=ov*nx;o.y+=ov*ny;
+            playCollision(dv);
+          }
+        }
+      }
+    }
+  }
+  G.st=G.st.filter(s=>!s.gone);draw();
+  if(mv){aid=requestAnimationFrame(step);}
+  else{
+    const et2=G.th[0]+G.th[1];
+    if(et2<=4&&G.tid!=null&&G.bfgz){
+      G.st=G.st.filter(s=>s.id!==G.tid);
+      G.bfgz=false;G.tid=null;draw();
+      setMsg("⚠️ FGZ-rikkomus! Heittokivi poistettu.");
+      setTimeout(settle,1500);return;
+    }
+    G.tid=null;G.bfgz=false;settle();
+  }
+}
+
+// ─── Valmennus ────────────────────────────────────────────────
+function coachComment(){
+  // Kommentoi vain ihmispelaajan heittoja
+  if(!G.lastThrowCtx) return;
+  const ctx=G.lastThrowCtx;
+  const player=ctx.by;
+  // Jos AI-pelissä ja heittäjä oli AI, ei kommentoida
+  if(G.ai>=0 && player===G.ai) return;
+
+  const ih=G.st.filter(s=>dH(s)<HR[0]+s.r);
+  ih.sort((a,b)=>dH(a)-dH(b));
+
+  const before=ctx.ihBefore;
+  const beforeWinner=before.length>0 ? before.sort((a,b)=>a.d-b.d)[0].o : -1;
+  const afterWinner=ih.length>0 ? ih[0].o : -1;
+  const afterCount=ih.length;
+  const playerWasWinning=beforeWinner===player;
+  const oppWasBefore=beforeWinner===1-player;
+  const isRemove=ctx.zone==="horizontal";
+  const throwsLeft=ctx.throwsLeft;
+  const hasHammer=ctx.hasHammer;
+  const myStonesBefore=before.filter(s=>s.o===player).length;
+  const oppStonesBefore=before.filter(s=>s.o===1-player).length;
+
+  let tip=null;
+  const totT=G.th[0]+G.th[1];
+  const wasFGZ=ctx.totalThrowsBefore<4;
+
+  // FGZ-rikkomus: poistoheitto suojakiviä vastaan
+  if(isRemove && wasFGZ){
+    tip="Neljän ensimmäisen heiton aikana suojakiviä ei saa poistaa. Tämä on FGZ-sääntö. Rakenna mieluummin omia suojakiviä.";
+  }
+  // Poistoheitto johtaessa → vähentää omia pisteitä
+  else if(isRemove && playerWasWinning){
+    tip="Johtaessa kannattaa jättää poistoheitto tekemättä — se vähentää omia pisteitäsi. Heitä mieluummin nojakivi.";
+  }
+  // Poistoheitto kun vastustaja johti ja onnistui
+  else if(isRemove && oppWasBefore && afterWinner===player){
+    tip="Hyvä poistoheitto! Otat johdon takaisin.";
+  }
+  // Poistoheitto epäonnistui kun vastustaja johti
+  else if(isRemove && oppWasBefore && afterWinner!==player){
+    tip="Vastustaja pitää johdon. Seuraavaksi harkitse tarkkuusheittoa lähemmäs napaa.";
+  }
+  // Hammer ja häviää erän edellä — ehkä kannattaa antaa erä
+  else if(!playerWasWinning && hasHammer && throwsLeft<=2){
+    tip="Sinulla on hammer. Viimeinen heitto voi vielä kääntää tilanteen.";
+  }
+  // Hyvä nojakivi
+  else if(!isRemove && playerWasWinning && afterWinner===player){
+    const myAfter=ih.filter(s=>s.o===player).length;
+    if(myAfter>myStonesBefore+0){
+      tip="Hyvä nojakivi! Lisäät potti pisteitä.";
+    }
+  }
+  // Ei kiviä ympyrässä, heitti ohi
+  else if(ih.filter(s=>s.o===player).length===0 && afterWinner!==player){
+    tip="Kivi ei osunut ympyrään — kokeile pienempää voimaa.";
+  }
+  // Yleinen kannustus kun menee hyvin
+  else if(afterWinner===player && afterCount>=3){
+    tip="Tilanne näyttää hyvältä — "+afterCount+" pistettä ympyrässä!";
+  }
+
+  // Coaching ensin, tilannekatsaus sen perään
+  const tipDelay=tip?2200:0;
+  if(tip) speak(tip);
+  G.lastThrowCtx=null;
+  return tipDelay;
+}
+
+function settle(){
+  const tipDelay=coachComment();
+  const tot=G.th[0]+G.th[1];
+  if(tot>=G.pp*2){endEra();return;}
+  const ft=G.firstThrow, hm=G.hammer;
+  let next;
+  if(G.th[ft]===G.th[hm]){
+    next=ft;
+  } else if(G.th[ft]<G.th[hm]){
+    next=ft;
+  } else {
+    next=hm;
+  }
+  G.turn=next; G.phase="aim"; G.power=0; G.zone="vertical";
+  setMsg((G.turn===0?"🔴 PUNAINEN":"🔵 SININEN")+" — napauta kenttää");
+  // Tilannekatsaus coaching-tipin jälkeen
+  setTimeout(()=>{
+    if(G.th[0]===G.th[1]){
+      speakSituation();
+    } else {
+      speakScore();
+      setTimeout(()=>speakTurn(), 1200);
+    }
+  }, tipDelay);
+  updateUI();
+  // Tekoälyn vuoro
+  if(G.ai===G.turn && G.phase==="aim"){
+    setTimeout(aiThrow, 900+Math.random()*600);
+  }
+}
+
+// ─── Tekoäly ──────────────────────────────────────────────────
+function aiThrow(){
+  if(G.phase!=="aim"||G.turn!==G.ai)return;
+  const ai=G.ai, opp=1-ai;
+
+  // Laske nykyinen tilanne
+  const ih=G.st.filter(s=>dH(s)<HR[0]+s.r);
+  ih.sort((a,b)=>dH(a)-dH(b));
+  const weWin = ih.length>0 && ih[0].o===ai;
+  const oppWins = ih.length>0 && ih[0].o===opp;
+  const oppStones = ih.filter(s=>s.o===opp);
+  const myStones = ih.filter(s=>s.o===ai);
+  const throwsLeft=(G.me*2)-G.th[0]-G.th[1];
+  const hasHammer=G.hammer===ai;
+
+  // Tavoitekulma: 0=suoraan, negatiivinen=vasemmalle, positiivinen=oikealle
+  let targetX, targetPower, noise;
+
+  // FGZ-vaiheessa ei poistoja (4 ensimmäistä heittoa per erä)
+  // G.th[0]+G.th[1] = yhteensä heitetyt tässä erässä
+  const totThrows=G.th[0]+G.th[1];
+  const fgzActive=totThrows<4;
+
+  // FGZ-kivet: kivet jotka ovat FGZ-vyöhykkeellä (tee-hog välissä)
+  const fgzStones=G.st.filter(s=>isFGZ(s));
+
+  // Taktinen päätöksenteko
+  if(!fgzActive && oppWins && oppStones.length>0){
+    // Vastustaja johtaa — yritä poistaa lähin vastustajan kivi
+    // Varmista ettei kohde ole FGZ-kivessä (vaikka FGZ olisi jo päättynyt, tarkista varmuuden vuoksi)
+    const nonFgzOpp=oppStones.filter(s=>!isFGZ(s));
+    const target=(nonFgzOpp.length>0?nonFgzOpp:oppStones)[0];
+    targetX=target.x + (Math.random()-0.5)*SR*2;
+    const distFrac=dH(target)/HR[0];
+    targetPower=0.85+distFrac*0.3+(Math.random()-0.5)*0.1;
+    noise=8;
+  } else if(fgzActive){
+    // FGZ-vaihe: tarkkuusheitto keskustaan, vältä FGZ-kiviä
+    // Etsi X joka ei kulje FGZ-kiven kautta
+    const fgzAll=G.st.filter(s=>isFGZ(s));
+    let safeX=HX+(Math.random()-0.5)*HR[2]*1.2;
+    // Yritä löytää reitti joka ei osu FGZ-kiviin
+    for(let attempt=0;attempt<8;attempt++){
+      const candidate=HX+(Math.random()-0.5)*HR[2]*1.5;
+      const blocked=fgzAll.some(s=>Math.abs(s.x-candidate)<SR*2.2);
+      if(!blocked){safeX=candidate;break;}
+    }
+    targetX=safeX;
+    const wantY=HY+HR[1]*(0.5+Math.random()*0.4);
+    const wantSpeed=Math.sqrt(2)*Math.abs(wantY-(H-SR-8))/(H-SR-8-HY)*SPEED_TOP*0.72;
+    targetPower=Math.max(0.25,Math.min(0.72,(wantSpeed-SPEED_HOG)/(SPEED_TOP-SPEED_HOG)));
+    noise=6;
+  } else if(weWin && myStones.length>=2 && throwsLeft>2){
+    // Me ollaan voitolla, laitetaan nojakivi
+    const angle=(Math.random()-0.5)*0.8;
+    const rad=HR[0]*0.82;
+    targetX=HX+Math.sin(angle)*rad;
+    targetPower=0.55+Math.random()*0.15;
+    noise=10;
+  } else {
+    // Yritä heittää lähelle keskustaa
+    const off=(Math.random()-0.5)*HR[2]*1.5;
+    targetX=HX+off;
+    // Voima: pyritään pysähtymään navan tienoille
+    const wantY=HY+HR[2]*(0.3+Math.random()*0.5);
+    const wantSpeed=Math.sqrt(2)*Math.abs(wantY-(H-SR-8))/(H-SR-8-HY)*SPEED_TOP*0.72;
+    targetPower=Math.max(0.3,Math.min(0.95,(wantSpeed-SPEED_HOG)/(SPEED_TOP-SPEED_HOG)));
+    noise=12;
+  }
+
+  // Lisää inhimillinen virhe (taso 3: pieni)
+  const errX=(Math.random()-0.5)*noise*2;
+  const errP=(Math.random()-0.5)*0.08;
+
+  G.ax=Math.max(ARC_MID_W+SR,Math.min(W-ARC_MID_W-SR, targetX+errX));
+  G.power=Math.max(0.05,Math.min(0.98, targetPower+errP));
+  G.zone="vertical";
+  draw();
+  setTimeout(()=>doThrow(ai), 350);
+}
+
+function doThrow(own){
+  if(G.phase!=="aim"||G.turn!==own)return;
+  G.own=own;G.bfgz=false;
+  const id=uid();G.tid=id;
+  const sp=powerToSpeed(G.power);
+  G.st.push({id,x:G.ax,y:H-SR-8,vx:0,vy:-sp,o:own,r:SR});
+  G.th[own]++;G.phase="flying";
+  // Tallenna heiton konteksti valmennusta varten
+  G.lastThrowCtx={
+    by: own,
+    ihBefore: G.st.slice(0,-1).filter(s=>dH(s)<HR[0]+s.r).map(s=>({o:s.o,d:dH(s)})),
+    throwsLeft: (G.me*2)-G.th[0]-G.th[1],
+    hasHammer: G.hammer===own,
+    power: G.power,
+    zone: G.zone,
+    totalThrowsBefore: G.th[0]+G.th[1]-1
+  };
+  setMsg("Kivi matkalla...");updateUI();
+  if(aid)cancelAnimationFrame(aid);
+  aid=requestAnimationFrame(step);
+}
+
+function endEra(){
+  // New scoring: all stones touching or inside outer ring count
+  // Winner (closest to center) gets points for ALL those stones
+  const ih=G.st.filter(s=>dH(s)<HR[0]+s.r);
+  let m, winner=-1;
+  if(!ih.length){
+    m="Erä "+G.era+" ohi — ei pisteitä (hammer pysyy)";
+    winner=-1;
+  } else {
+    ih.sort((a,b)=>dH(a)-dH(b));
+    const w=ih[0].o;
+    const p=ih.length; // ALL stones in ring count for winner
+    G.sc[w]+=p;
+    winner=w;
+    const reds=ih.filter(s=>s.o===0).length;
+    const blues=ih.filter(s=>s.o===1).length;
+    m="Erä "+G.era+" ohi! "+(w===0?"🔴":"🔵")+" saa "+p+" p (🔴"+reds+" 🔵"+blues+" ympyrässä)";
+  }
+  setMsg(m);updateUI();draw();
+  playFanfare();
+  speakEraResult(winner, winner>=0?G.st.filter(s=>dH(s)<HR[0]+s.r).length:0);
+  setTimeout(()=>{
+    if(G.era>=G.me){
+      G.phase="end";const[a,b]=G.sc;
+      const wm=a>b?"🔴 Punainen voitti "+a+"–"+b+"!":b>a?"🔵 Sininen voitti "+b+"–"+a+"!":"🤝 Tasapeli "+a+"–"+b+"!";
+      setMsg(wm);updateUI();draw();
+      setTimeout(()=>speakWinner(),500);
+    } else {
+      // Hammer transfer: winner loses hammer (starts first next era), loser gets hammer
+      // Tasapeli: hammer pysyy samalla
+      let nextHammer=G.hammer;
+      if(winner>=0){
+        nextHammer=winner===0?1:0; // voittaja aloittaa ensin → häviäjällä hammer
+      }
+      const nextFirst=nextHammer===0?1:0;
+      G.era++;G.st=[];G.th=[0,0];
+      G.hammer=nextHammer; G.firstThrow=nextFirst;
+      G.turn=nextFirst; G.phase="aim";G.ax=W/2;G.power=0;G.zone="vertical";
+      const hammerName=nextHammer===0?"🔴 Punainen":"🔵 Sininen";
+      setMsg("Erä "+G.era+": hammer → "+hammerName+" 🔨");
+      updateUI();draw();
+    }
+  },2400);
+}
+
+// ─── Input ────────────────────────────────────────────────────
+let touchMode=null;
+function getCP(e){
+  const r=cv.getBoundingClientRect(),sx=W/r.width,sy=H/r.height;
+  const src=e.touches?e.touches[0]:e;
+  return{x:(src.clientX-r.left)*sx,y:(src.clientY-r.top)*sy};
+}
+
+function applyPoint(p){
+  if(inArcStrip(p)){
+    // Side strips: power control
+    touchMode="vertical";
+    G.zone="vertical";
+    G.power=arcYtoPower(p.y);
+    const predY=simulateFinalY(powerToSpeed(G.power));
+    const dist=Math.round(HOG_Y-predY);
+    setMsg(dist>0?"Pituus: "+dist+"px — paina HEITÄ":"HOG-heitto — paina HEITÄ");
+    draw();
+  } else if(inOverBar(p)){
+    // Top center over-power bar
+    touchMode="horizontal";
+    G.zone="horizontal";
+    G.power=Math.max(1,Math.min(2,overXtoPower(p.x)));
+    setMsg("Poistoheitto "+Math.round((G.power-1)*100)+"% — paina HEITÄ");
+    draw();
+  } else {
+    // Center field: aim direction
+    touchMode="aim";
+    G.ax=Math.max(ARC_MID_W+SR,Math.min(W-ARC_MID_W-SR,p.x));
+    setMsg("Suunta asetettu — paina HEITÄ");
+    draw();
+  }
+}
+
+function applyMove(p){
+  if(touchMode==="vertical"){
+    if(inOverBar(p)){
+      touchMode="horizontal";G.zone="horizontal";
+      G.power=1;
+      setMsg("Poistoheitto 0% — vedä reunoille");
+      draw();
+    } else {
+      G.power=arcYtoPower(p.y);
+      const predY=simulateFinalY(powerToSpeed(G.power));
+      const dist=Math.round(HOG_Y-predY);
+      setMsg(dist>0?"Pituus: "+dist+"px — paina HEITÄ":"HOG-heitto — paina HEITÄ");
+      draw();
+    }
+  } else if(touchMode==="horizontal"){
+    if(inArcStrip(p)){
+      touchMode="vertical";G.zone="vertical";
+      G.power=arcYtoPower(p.y);
+      draw();
+    } else {
+      G.power=Math.max(1,Math.min(2,overXtoPower(p.x)));
+      setMsg("Poistoheitto "+Math.round((G.power-1)*100)+"% — paina HEITÄ");
+      draw();
+    }
+  } else if(touchMode==="aim"){
+    G.ax=Math.max(ARC_MID_W+SR,Math.min(W-ARC_MID_W-SR,p.x));
+    draw();
+  }
+}
+
+cv.addEventListener("touchstart",e=>{e.preventDefault();if(G.phase!=="aim")return;touchMode=null;applyPoint(getCP(e));},{passive:false});
+cv.addEventListener("touchmove",e=>{e.preventDefault();if(G.phase!=="aim")return;applyMove(getCP(e));},{passive:false});
+cv.addEventListener("touchend",()=>touchMode=null,{passive:false});
+cv.addEventListener("click",e=>{if(G.phase!=="aim")return;applyPoint(getCP(e));});
+
+let mouseDown=false;
+cv.addEventListener("mousedown",e=>{if(G.phase!=="aim")return;mouseDown=true;touchMode=null;applyPoint(getCP(e));});
+cv.addEventListener("mousemove",e=>{if(!mouseDown||G.phase!=="aim")return;applyMove(getCP(e));});
+cv.addEventListener("mouseup",()=>{mouseDown=false;touchMode=null;});
+cv.addEventListener("mouseleave",()=>{mouseDown=false;touchMode=null;});
+
+document.getElementById("br").onclick=()=>doThrow(0);
+document.getElementById("bb").onclick=()=>doThrow(1);
+document.getElementById("bn").onclick=()=>newGame(G.ai>=0);
+
+document.getElementById("frslide").oninput=function(){
+  FRC=0.970+ +this.value*0.00025;
+  document.getElementById("frval").textContent=this.value+"%";
+};
+document.getElementById("srslide").oninput=function(){
+  SR=+this.value;
+  const l={8:"Pieni",10:"Pieni+",13:"Keski",16:"Suuri",20:"Iso"};
+  document.getElementById("srval").textContent=l[SR]||SR+"px";
+  draw();
+};
+
+// PIN screen shown on load — newGame called after correct PIN
+requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();}));
+</script>
+
+</body>
+</html>
