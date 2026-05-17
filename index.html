@@ -72,7 +72,7 @@ text-transform:uppercase;
 background:rgba(5,15,30,.97);
 }
 
-#field{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:2px;}
+#field{flex:1;min-height:0;display:flex;align-items:stretch;justify-content:center;padding:2px 2px 0 2px;overflow:hidden;}
 canvas{display:block;border-radius:10px;touch-action:none;cursor:crosshair;
 box-shadow:0 4px 24px rgba(10,22,40,.9),0 0 0 1px rgba(46,125,196,.2);}
 
@@ -85,19 +85,19 @@ padding-bottom:max(4px, env(safe-area-inset-bottom));
 }
 
 /* Single compact row */
-#score-row{display:flex;align-items:stretch;gap:4px;height:58px;}
+#score-row{display:flex;align-items:stretch;gap:4px;height:52px;}
 #mid-col{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex-shrink:0;}
 @media(max-height:680px){
-#score-row{height:46px;}
-.sc-score-total{font-size:20px;}
-.sc-score-era{font-size:9px;}
-.sc-throw{font-size:11px;}
-#swipe-hint{padding:3px;}
-#era-bar{padding:0;}
-.sc-btn{padding:0 6px;}
-.sc-label{font-size:8px;}
-#bottom{padding:2px 6px 4px;}
-#swipe-hint{padding:5px;}
+  #score-row{height:46px;}
+  .sc-score-total{font-size:20px;}
+  .sc-score-era{font-size:9px;}
+  .sc-throw{font-size:11px;}
+  #swipe-hint{padding:3px;}
+  #era-bar{padding:0;}
+  .sc-btn{padding:0 6px;}
+  .sc-label{font-size:8px;}
+  #bottom{padding:2px 6px 4px;}
+  #swipe-hint{padding:5px;}
 }
 
 .sc-btn{
@@ -117,7 +117,7 @@ color:#fff;font-family:inherit;gap:6px;
 .sc-scores{display:flex;flex-direction:column;align-items:center;gap:1px;}
 .sc-score-era{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);line-height:1;}
 .sc-score-total{font-size:26px;font-weight:900;color:#fff;line-height:1;}
-#era-bar{display:flex;align-items:center;justify-content:center;padding:1px 0 2px;gap:6px;}
+#era-bar{display:flex;align-items:center;justify-content:center;padding:0 0 1px;gap:6px;}
 #era-label{font-size:10px;font-weight:800;color:rgba(255,255,255,.7);letter-spacing:.4px;}
 .sc-info{font-size:8px;opacity:.6;margin-top:1px;letter-spacing:.3px;}
 .sc-score{font-size:32px;font-weight:900;color:#fff;line-height:1;}
@@ -220,6 +220,7 @@ color:#fff;box-shadow:0 3px 12px rgba(192,57,43,.5);
 #score-row{display:flex;flex-direction:row;width:100%;}
 .sc-btn{flex:1;}
 #mid-col{flex-shrink:0;}
+#swipe-hint{display:none;}
 }
 </style>
 
@@ -501,10 +502,12 @@ function simulateFinalY(speed){
 // ─── Resize ───────────────────────────────────────────────────
 function resize(){
   const f=document.getElementById("field");
-  const fw=f.clientWidth-4,fh=f.clientHeight-4;
+  const fw=f.clientWidth-4, fh=f.clientHeight-4;
   if(fw<10||fh<10){setTimeout(resize,100);return;}
-  let cw=fw,ch=cw*(H/W);
-  if(ch>fh){ch=fh;cw=ch*(W/H);}
+  // Pystysuunta ensin: korkeus täyttää kentän, leveys skaalautuu
+  let ch=fh, cw=ch*(W/H);
+  // Jos leveys ylittää kentän leveyden, rajoita leveys
+  if(cw>fw){cw=fw;ch=cw*(H/W);}
   cv.style.width=~~cw+"px";cv.style.height=~~ch+"px";
   if(G&&G.phase) draw();
 }
