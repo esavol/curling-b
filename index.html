@@ -1,4 +1,4 @@
-
+Curling b v57
 
 <!DOCTYPE html>
 
@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Curling B v56</title>
+<title>Curling B v57</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:#0a1520;font-family:sans-serif;color:#fff;user-select:none;-webkit-user-select:none}
@@ -78,11 +78,18 @@ box-shadow:0 4px 24px rgba(10,22,40,.9),0 0 0 1px rgba(46,125,196,.2);}
 flex-shrink:0;
 background:rgba(5,15,30,.97);
 border-top:1px solid rgba(255,255,255,.08);
-padding:4px 8px 6px;
+padding:4px 8px max(6px, env(safe-area-inset-bottom));
 }
 
 /* Single compact row */
-#score-row{display:flex;align-items:stretch;gap:5px;height:62px;}
+#score-row{display:flex;align-items:stretch;gap:5px;height:56px;}
+@media(max-height:650px){
+#score-row{height:46px;}
+.sc-btn{padding:0 6px;}
+.sc-label{font-size:8px;}
+#bottom{padding:2px 6px 4px;}
+#swipe-hint{padding:5px;}
+}
 
 .sc-btn{
 flex:1;display:flex;flex-direction:row;align-items:center;justify-content:space-between;
